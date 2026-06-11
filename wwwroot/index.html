@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Heritage Preservation</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">🌍 Digital Heritage</h1>
+            <ul class="nav-links">
+                <li><a href="#" onclick="loadSection('dashboard')">Dashboard</a></li>
+                <li><a href="#" onclick="loadSection('stories')">Stories</a></li>
+                <li><a href="#" onclick="loadSection('artifacts')">Artifacts</a></li>
+                <li><a href="#" onclick="loadSection('languages')">Languages</a></li>
+                <li><a href="#" onclick="loadSection('events')">Events</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section active">
+            <h2>📊 Dashboard</h2>
+            <div class="stats">
+                <div class="stat-card">
+                    <h3 id="storyCount">0</h3>
+                    <p>Stories Recorded</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="artifactCount">0</h3>
+                    <p>Artifacts Archived</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="languageCount">0</h3>
+                    <p>Language Entries</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="eventCount">0</h3>
+                    <p>Cultural Events</p>
+                </div>
+            </div>
+            <div class="quick-actions">
+                <button class="btn btn-primary" onclick="loadSection('stories'); scrollToForm('storyForm')">📝 Record a Story</button>
+                <button class="btn btn-primary" onclick="loadSection('artifacts'); scrollToForm('artifactForm')">📷 Upload Artifact</button>
+                <button class="btn btn-primary" onclick="loadSection('languages'); scrollToForm('languageForm')">🗣️ Add Language</button>
+                <button class="btn btn-primary" onclick="loadSection('events'); scrollToForm('eventForm')">📅 Create Event</button>
+            </div>
+        </section>
+
+        <!-- Stories Section -->
+        <section id="stories" class="section">
+            <h2>📚 Community Storytelling</h2>
+            <form id="storyForm" class="form">
+                <h3>Record a New Story</h3>
+                <input type="text" placeholder="Story Title" id="storyTitle" required>
+                <textarea placeholder="Story Description" id="storyDescription" required></textarea>
+                <input type="text" placeholder="Culture/Community" id="storyCulture">
+                <input type="text" placeholder="Language" id="storyLanguage">
+                <input type="text" placeholder="Location" id="storyLocation">
+                <textarea placeholder="Transcription (optional)" id="storyTranscription"></textarea>
+                <button type="button" class="btn btn-primary" onclick="addStory()">📝 Save Story</button>
+            </form>
+            <div id="storiesList" class="list"></div>
+        </section>
+
+        <!-- Artifacts Section -->
+        <section id="artifacts" class="section">
+            <h2>🏛️ Interactive Archive</h2>
+            <form id="artifactForm" class="form">
+                <h3>Upload an Artifact</h3>
+                <input type="text" placeholder="Artifact Name" id="artifactName" required>
+                <textarea placeholder="Description" id="artifactDescription" required></textarea>
+                <input type="text" placeholder="Category (e.g., clothing, tools, art)" id="artifactCategory">
+                <input type="text" placeholder="Culture/Community" id="artifactCulture">
+                <input type="text" placeholder="Estimated Age" id="artifactAge">
+                <input type="text" placeholder="Materials" id="artifactMaterials">
+                <input type="text" placeholder="Location" id="artifactLocation">
+                <textarea placeholder="Historical Context" id="artifactContext"></textarea>
+                <button type="button" class="btn btn-primary" onclick="addArtifact()">📷 Save Artifact</button>
+            </form>
+            <div id="artifactsList" class="list"></div>
+        </section>
+
+        <!-- Languages Section -->
+        <section id="languages" class="section">
+            <h2>🗣️ Language Preservation</h2>
+            <form id="languageForm" class="form">
+                <h3>Add a Language Entry</h3>
+                <input type="text" placeholder="Language Name" id="languageName" required>
+                <input type="text" placeholder="Word" id="languageWord" required>
+                <input type="text" placeholder="Translation" id="languageTranslation" required>
+                <input type="text" placeholder="IPA (optional)" id="languageIPA">
+                <input type="text" placeholder="Part of Speech" id="languagePOS">
+                <textarea placeholder="Example Sentence" id="languageExample"></textarea>
+                <textarea placeholder="Example Translation" id="languageExampleTranslation"></textarea>
+                <input type="text" placeholder="Dialect (optional)" id="languageDialect">
+                <textarea placeholder="Notes" id="languageNotes"></textarea>
+                <button type="button" class="btn btn-primary" onclick="addLanguageEntry()">📚 Save Entry</button>
+            </form>
+            <div id="languagesList" class="list"></div>
+        </section>
+
+        <!-- Events Section -->
+        <section id="events" class="section">
+            <h2>📅 Cultural Event Mapping</h2>
+            <form id="eventForm" class="form">
+                <h3>Create a Cultural Event</h3>
+                <input type="text" placeholder="Event Title" id="eventTitle" required>
+                <textarea placeholder="Description" id="eventDescription" required></textarea>
+                <input type="text" placeholder="Culture/Community" id="eventCulture">
+                <input type="text" placeholder="Type (e.g., festival, ceremony)" id="eventType">
+                <input type="datetime-local" placeholder="Start Date/Time" id="eventStartDate" required>
+                <input type="datetime-local" placeholder="End Date/Time (optional)" id="eventEndDate">
+                <input type="text" placeholder="Location" id="eventLocation">
+                <label>
+                    <input type="checkbox" id="eventRecurring"> Recurring Event
+                </label>
+                <input type="text" placeholder="Recurrence Pattern (e.g., yearly, monthly)" id="eventRecurrence">
+                <input type="number" placeholder="Expected Attendees" id="eventAttendees" min="0">
+                <button type="button" class="btn btn-primary" onclick="addEvent()">📅 Save Event</button>
+            </form>
+            <div id="eventsList" class="list"></div>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Digital Heritage Preservation App | Safeguarding Traditions, Stories & Artifacts</p>
+    </footer>
+
+    <script src="/js/app.js"></script>
+</body>
+</html>
