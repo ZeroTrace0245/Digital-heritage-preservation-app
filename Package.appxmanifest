@@ -16,7 +16,7 @@
   <mp:PhoneIdentity PhoneProductId="ac1b878f-04c5-4657-9570-50c5a0b00392" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>digital heritage preservation app</DisplayName>
+    <DisplayName>Lorevia</DisplayName>
     <PublisherDisplayName>sachi</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
@@ -35,8 +35,8 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="digital heritage preservation app"
-        Description="digital heritage preservation app"
+        DisplayName="Lorevia"
+        Description="Lorevia — Discover places, preserve stories and plan your journey."
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
@@ -48,6 +48,5 @@
 
   <Capabilities>
     <rescap:Capability Name="runFullTrust" />
-    <systemai:Capability Name="systemAIModels"/>
   </Capabilities>
 </Package>

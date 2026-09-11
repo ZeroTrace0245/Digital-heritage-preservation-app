@@ -21,11 +21,19 @@ public sealed partial class TourismWindow : Window
     public TourismWindow()
     {
         InitializeComponent();
+        BuildReleaseControls();
+        var escape = new Microsoft.UI.Xaml.Input.KeyboardAccelerator { Key = Windows.System.VirtualKey.Escape };
+        escape.Invoked += (_, args) => { if (WikiReaderPanel.Visibility == Visibility.Visible) { CloseWikiReader(this, new RoutedEventArgs()); args.Handled = true; } };
+        Root.KeyboardAccelerators.Add(escape);
+        var help = new Microsoft.UI.Xaml.Input.KeyboardAccelerator { Key = Windows.System.VirtualKey.F1 };
+        help.Invoked += async (_, args) => { args.Handled = true; if (ready) await ShowUserGuide(); };
+        Root.KeyboardAccelerators.Add(help);
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBar);
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1320, 900));
+        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Lorevia.ico"));
     }
-    private void LoadedWindow(object sender, RoutedEventArgs e)
+    private async void LoadedWindow(object sender, RoutedEventArgs e)
     {
         if (ready) return;
         try { data = store.Load(); }
@@ -34,6 +42,7 @@ public sealed partial class TourismWindow : Window
         InitializePreferences();
         ready = true;
         Refresh();
+        if (!data.HasSeenUserGuide) await ShowUserGuide();
     }
     private void Message(string message, bool error = false)
     {
@@ -51,6 +60,7 @@ public sealed partial class TourismWindow : Window
             store.Save(next);
             data = next;
             Refresh();
+            PublishSyncSnapshot();
             return true;
         }
         catch (Exception ex) { Message("Could not save your changes: " + ex.Message, true); return false; }
@@ -78,9 +88,11 @@ public sealed partial class TourismWindow : Window
         TripsPanel.Visibility = page == "Trips" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPanel.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         WikiPanel.Visibility = page == "Wiki" ? Visibility.Visible : Visibility.Collapsed;
+        OfflinePanel.Visibility = page == "Offline" ? Visibility.Visible : Visibility.Collapsed;
         RefreshWiki();
+        if (page == "Offline") RefreshOffline();
         Hero.Visibility = page == "Discover" ? Visibility.Visible : Visibility.Collapsed;
-        PageTitle.Text = page == "Wiki" ? "Places wiki" : page == "Saved" ? "Saved places" : page == "Trips" ? "My trips" : page;
+        PageTitle.Text = page == "Offline" ? "Offline library" : page == "Wiki" ? "Places wiki" : page == "Saved" ? "Saved places" : page == "Trips" ? "My trips" : page;
         PageSubtitle.Text = page switch { "Saved" => "Keep a little inspiration for later.", "Trips" => "Less organizing. More exploring.", "Settings" => "A travel companion that feels like yours.", _ => "Small island. Endless possibilities." };
         SectionTitle.Text = page == "Saved" ? "Your personal shortlist" : "Find your kind of escape";
         var query = Search.Text.Trim();
@@ -110,14 +122,14 @@ public sealed partial class TourismWindow : Window
         var panel = new StackPanel { Spacing = 14, MaxWidth = 480 };
         if (!string.IsNullOrEmpty(destination.Image)) panel.Children.Add(new Image { Source = new BitmapImage(new Uri(destination.Image)), Height = 200, Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill });
         panel.Children.Add(new TextBlock { Text = destination.Subtitle, Opacity = 0.65 });
-        panel.Children.Add(new TextBlock { Text = destination.Description, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(new TextBlock { Text = PlaceGuides.Details(destination), TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true });
         var saved = new Button { Content = data.Saved.Contains(destination.Id) ? "♥ Saved to your places" : "♡ Save this place" };
         saved.Click += (_, _) =>
         {
             if (Change(next => { if (!next.Saved.Remove(destination.Id)) next.Saved.Add(destination.Id); })) saved.Content = data.Saved.Contains(destination.Id) ? "♥ Saved to your places" : "♡ Save this place";
         };
         panel.Children.Add(saved);
-        var map = new HyperlinkButton { Content = "Open location in maps ↗", NavigateUri = new Uri("https://www.bing.com/maps?q=" + Uri.EscapeDataString(destination.Name + " " + destination.Country)) };
+        var map = new Button { Content = "View map in app" };
         panel.Children.Add(map);
         var customize = new Button { Content = T("Customize place") };
         panel.Children.Add(customize);
@@ -130,6 +142,8 @@ public sealed partial class TourismWindow : Window
         panel.Children.Add(error);
         var dialog = Dialog(destination.Name, panel, "Add to itinerary");
         var editRequested = false;
+        var mapRequested = false;
+        map.Click += (_, _) => { mapRequested = true; dialog.Hide(); };
         customize.Click += (_, _) => { editRequested = true; dialog.Hide(); };
         dialog.IsPrimaryButtonEnabled = data.Trips.Count > 0 && writable;
         dialog.PrimaryButtonClick += (_, args) =>
@@ -140,6 +154,7 @@ public sealed partial class TourismWindow : Window
         };
         await ShowDialog(dialog);
         if (editRequested) await PlaceEditor(destination);
+        else if (mapRequested) await OpenWikiUri(new Uri("https://www.bing.com/maps?q=" + Uri.EscapeDataString(destination.Name + " " + destination.Country)));
     }
     private ContentDialog Dialog(string title, StackPanel content, string primary) => new()
     {
@@ -158,17 +173,22 @@ public sealed partial class TourismWindow : Window
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
         var panel = new StackPanel { Spacing = 14, Width = 400 };
         panel.Children.Add(name); panel.Children.Add(start); panel.Children.Add(days); panel.Children.Add(error);
+        var currency = new TextBox { Header = T("Currency code"), Text = existing?.Currency ?? "USD", MaxLength = 3 };
+        var budget = new NumberBox { Header = T("Trip budget"), Value = (double)(existing?.Budget ?? 0), Minimum = 0, Maximum = 1000000000 };
+        panel.Children.Insert(3, currency); panel.Children.Insert(4, budget);
         var dialog = Dialog(existing is null ? "Your next chapter" : "Edit trip", panel, "Save trip");
         Guid tripId = existing?.Id ?? Guid.NewGuid();
         dialog.PrimaryButtonClick += (_, args) =>
         {
             if (string.IsNullOrWhiteSpace(name.Text) || start.Date is null || !ValidDay(days.Value, 60)) { error.Text = T("Enter a name, start date and a whole number of days from 1 to 60."); args.Cancel = true; return; }
             if (existing?.Stops.Any(s => s.Day > days.Value) == true) { error.Text = T("Move or remove later stops before shortening this trip."); args.Cancel = true; return; }
+            if (!ValidMoney(budget.Value) || currency.Text.Trim().Length != 3 || currency.Text.Trim().Any(c => !char.IsAsciiLetter(c))) { error.Text = T("Enter a three-letter currency code and a nonnegative amount."); args.Cancel = true; return; }
             if (!Change(next =>
             {
                 var trip = next.Trips.FirstOrDefault(t => t.Id == tripId);
                 if (trip is null) { trip = new TravelTrip { Id = tripId }; next.Trips.Add(trip); }
                 trip.Name = name.Text.Trim(); trip.Start = start.Date.Value.Date; trip.Days = (int)days.Value;
+                trip.Currency = currency.Text.Trim().ToUpperInvariant(); trip.Budget = (decimal)budget.Value;
             })) args.Cancel = true;
         };
         if (await ShowDialog(dialog) == ContentDialogResult.Primary)
@@ -184,6 +204,12 @@ public sealed partial class TourismWindow : Window
         if (TripsList.SelectedItem is not TravelTrip trip) { ItineraryPanel.Visibility = Visibility.Collapsed; return; }
         ItineraryPanel.Visibility = Visibility.Visible;
         TripTitle.Text = "Your itinerary";
+        Stops.Children.Add(new TextBlock { Text = $"{T("Trip budget")}: {trip.Currency} {trip.Budget:N2} · {T("Estimated costs")}: {trip.EstimatedTotal:N2} · {T("Remaining")}: {trip.Budget - trip.EstimatedTotal:N2}", TextWrapping = TextWrapping.Wrap });
+        var tripTools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        AddAction(tripTools, "Save PDF", async () => await PrintTrip(trip, true));
+        AddAction(tripTools, "Print", async () => await PrintTrip(trip, false));
+        AddAction(tripTools, "Share trip", async () => await SaveFile("lorevia-trip", ".lorevia-trip", TravelExchange.Export(data, trip)));
+        Stops.Children.Add(tripTools);
         for (var day = 1; day <= trip.Days; day++)
         {
             Stops.Children.Add(new TextBlock { Text = $"DAY {day:00}  ·  {trip.Start.AddDays(day - 1):ddd, dd MMM}", FontSize = 12, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 4) });
@@ -198,6 +224,14 @@ public sealed partial class TourismWindow : Window
                 var button = new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left, Padding = new Thickness(16) };
                 button.Click += async (_, _) => await EditStop(trip.Id, stop);
                 Stops.Children.Add(button);
+                var order = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+                var up = AddAction(order, "Move up", () => { Change(next => TravelExchange.MoveStop(next.Trips.Single(t => t.Id == trip.Id), stop.Id, -1)); return Task.CompletedTask; });
+                var down = AddAction(order, "Move down", () => { Change(next => TravelExchange.MoveStop(next.Trips.Single(t => t.Id == trip.Id), stop.Id, 1)); return Task.CompletedTask; });
+                up.IsEnabled = entries.IndexOf(stop) > 0; down.IsEnabled = entries.IndexOf(stop) < entries.Count - 1;
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(up, T("Move up") + " " + destination.Name);
+                Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(down, T("Move down") + " " + destination.Name);
+                order.Children.Add(new TextBlock { Text = $"{trip.Currency} {stop.EstimatedCost:N2}", VerticalAlignment = VerticalAlignment.Center });
+                Stops.Children.Add(order);
             }
         }
     }
@@ -208,12 +242,15 @@ public sealed partial class TourismWindow : Window
         var notes = new TextBox { Header = "Notes", Text = stop.Notes, AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MaxLength = 2000, Height = 120 };
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
         var panel = new StackPanel { Spacing = 14, Width = 400 }; panel.Children.Add(day); panel.Children.Add(notes); panel.Children.Add(error);
+        var cost = new NumberBox { Header = T("Estimated costs") + " (" + trip.Currency + ")", Value = (double)stop.EstimatedCost, Minimum = 0, Maximum = 1000000000 };
+        panel.Children.Insert(2, cost);
         var dialog = Dialog(Catalog.Single(d => d.Id == stop.DestinationId).Name, panel, "Save stop");
         dialog.SecondaryButtonText = "Remove stop";
         dialog.PrimaryButtonClick += (_, args) =>
         {
             if (!ValidDay(day.Value, trip.Days)) { error.Text = T("Enter a whole day within this trip."); args.Cancel = true; return; }
-            if (!Change(next => { var item = next.Trips.Single(t => t.Id == tripId).Stops.Single(s => s.Id == stop.Id); item.Day = (int)day.Value; item.Notes = notes.Text.Trim(); })) args.Cancel = true;
+            if (!ValidMoney(cost.Value)) { error.Text = T("Enter a three-letter currency code and a nonnegative amount."); args.Cancel = true; return; }
+            if (!Change(next => { var item = next.Trips.Single(t => t.Id == tripId).Stops.Single(s => s.Id == stop.Id); item.Day = (int)day.Value; item.Notes = notes.Text.Trim(); item.EstimatedCost = (decimal)cost.Value; })) args.Cancel = true;
         };
         dialog.SecondaryButtonClick += (_, args) => { if (!Change(next => next.Trips.Single(t => t.Id == tripId).Stops.RemoveAll(s => s.Id == stop.Id))) args.Cancel = true; };
         await ShowDialog(dialog);
@@ -242,7 +279,7 @@ public sealed partial class TourismWindow : Window
         try
         {
             var picker = new FileSavePicker { SuggestedFileName = name };
-            picker.FileTypeChoices.Add(extension == ".json" ? "Travel backup" : "Text itinerary", new[] { extension });
+            picker.FileTypeChoices.Add(extension == ".json" ? "Travel backup" : extension == ".lorevia-trip" ? "Shared Lorevia trip" : "Text itinerary", new[] { extension });
             WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
             var file = await picker.PickSaveFileAsync();
             if (file is null) return;
@@ -254,19 +291,19 @@ public sealed partial class TourismWindow : Window
     private async void ExportTrip(object sender, RoutedEventArgs e)
     {
         if (TripsList.SelectedItem is not TravelTrip trip) return;
-        var text = new StringBuilder().AppendLine(trip.Name).AppendLine(trip.Summary).AppendLine();
+        var text = new StringBuilder().AppendLine(trip.Name).AppendLine(trip.Summary).AppendLine($"Budget: {trip.Currency} {trip.Budget:N2} · Estimated stops: {trip.EstimatedTotal:N2}").AppendLine();
         for (var day = 1; day <= trip.Days; day++)
         {
             text.AppendLine($"Day {day} — {trip.Start.AddDays(day - 1):dd MMM yyyy}");
             foreach (var stop in trip.Stops.Where(s => s.Day == day)) text.AppendLine("  " + Catalog.Single(d => d.Id == stop.DestinationId).Name).AppendLine("  " + stop.Notes);
             text.AppendLine();
         }
-        await SaveFile("serendib-itinerary", ".txt", text.ToString());
+        await SaveFile("lorevia-itinerary", ".txt", text.ToString());
     }
     private async void ExportBackup(object sender, RoutedEventArgs e)
     {
         if (!writable) { Message("Restore readable travel data before exporting a backup.", true); return; }
-        await SaveFile("serendib-backup", ".json", TourismStore.Serialize(data));
+        await SaveFile("lorevia-backup", ".json", TourismStore.Serialize(data));
     }
     private async void ImportBackup(object sender, RoutedEventArgs e)
     {

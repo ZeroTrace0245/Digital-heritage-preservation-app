@@ -53,3 +53,4 @@ appsettings.Development.json
 
 # macOS
 .DS_Store
+artifacts/

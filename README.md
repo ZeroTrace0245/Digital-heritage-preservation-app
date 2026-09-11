@@ -1,11 +1,12 @@
-# 🌍 Digital Heritage Preservation App - MVP Prototype
+# Lorevia — travel and cultural heritage
 
-## Serendib tourism desktop app
+## Lorevia tourism desktop app
 
 The desktop app opens a multi-country travel planner with Windows 11 Mica, a top location bar,
 Sri Lanka/Japan/South Korea/Russia destinations, customizable places, saved favorites and trip itineraries.
 Settings include English, Japanese, Korean and Russian interface options, home country and appearance.
 The Places wiki section offers searchable offline destination notes and Wikipedia search and reading inside the app.
+The Windows beta includes offline articles, budgets, stop ordering, PDF/printing, shared-trip files, optional OneDrive/Dropbox folder sync, recovery backups and privacy/support controls. See [the release workflow](Packaging/RELEASE.md) to build and test the Windows installer.
 See [Tourism setup and features](TOURISM-QUICKSTART.md). The original heritage archive is still accessible.
 
 ## Native Windows desktop app

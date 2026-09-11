@@ -26,6 +26,10 @@ namespace digital_heritage_preservation_app
     public partial class App : Application
     {
         private Window? _window;
+        private System.Threading.Mutex? instanceMutex;
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int MessageBox(IntPtr window, string text, string caption, uint type);
 
         /// <summary>
         /// Initializes the singleton application object.  This is the first line of authored code
@@ -56,6 +60,16 @@ namespace digital_heritage_preservation_app
         {
             try
             {
+                var path = Path.GetFullPath(new TourismStore(Environment.GetEnvironmentVariable("SERENDIB_TRAVEL_DATA_PATH")).FilePath);
+                var key = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(path.ToUpperInvariant())));
+                instanceMutex = new System.Threading.Mutex(true, "Local\\Lorevia-" + key, out var firstInstance);
+                if (!firstInstance)
+                {
+                    MessageBox(IntPtr.Zero, "Lorevia is already open. Use its existing window to keep your data safe.", "Lorevia", 0x40);
+                    Exit();
+                    return;
+                }
+                Environment.SetEnvironmentVariable("WEBVIEW2_USER_DATA_FOLDER", Path.Combine(Path.GetDirectoryName(path)!, "Browser"));
                 _window = new TourismWindow();
                 _window.Activate();
             }

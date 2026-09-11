@@ -59,7 +59,7 @@ public sealed partial class TourismWindow
         WikiNotes.Visibility = Visibility.Visible;
         WikiPlaceTitle.Text = wikiPlace.Name;
         WikiPlaceFacts.Text = wikiPlace.Subtitle;
-        WikiPlaceDescription.Text = wikiPlace.Description;
+        WikiPlaceDescription.Text = PlaceGuides.Details(wikiPlace);
     }
 
     private async void ReadWikiPlace(object sender, RoutedEventArgs e)
@@ -72,13 +72,14 @@ public sealed partial class TourismWindow
         if (wikiPlace is not null) await ShowDestination(wikiPlace);
     }
 
-    private static bool IsWikiUri(Uri uri) => uri.Scheme == "https" &&
-        (uri.Host.Equals("wikipedia.org", StringComparison.OrdinalIgnoreCase) || uri.Host.EndsWith(".wikipedia.org", StringComparison.OrdinalIgnoreCase));
+    private static bool IsWebUri(Uri uri) => uri.Scheme is "https" or "http";
 
     private async Task OpenWikiUri(Uri uri)
     {
         wikiRequestedUri = uri;
         WikiReaderPanel.Visibility = Visibility.Visible;
+        Nav.IsEnabled = false;
+        BrowserClose.Focus(FocusState.Programmatic);
         WikiError.IsOpen = false;
         WikiLoading.Visibility = Visibility.Visible;
         if (wikiOpening) return;
@@ -91,9 +92,20 @@ public sealed partial class TourismWindow
                 WikiBrowser.CoreWebView2.NewWindowRequested += (_, args) =>
                 {
                     args.Handled = true;
-                    if (Uri.TryCreate(args.Uri, UriKind.Absolute, out var target) && IsWikiUri(target))
+                    if (Uri.TryCreate(args.Uri, UriKind.Absolute, out var target) && IsWebUri(target))
                         WikiBrowser.CoreWebView2.Navigate(target.AbsoluteUri);
-                    else WikiFailure("This link is outside Wikipedia. Continue reading with the links inside this article.");
+                    else WikiFailure("This link cannot be displayed in the app’s web browser.");
+                };
+                WikiBrowser.CoreWebView2.HistoryChanged += (_, _) =>
+                {
+                    WikiBack.IsEnabled = WikiBrowser.CanGoBack;
+                    BrowserForward.IsEnabled = WikiBrowser.CanGoForward;
+                };
+                WikiBrowser.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
+                WikiBrowser.CoreWebView2.LaunchingExternalUriScheme += (_, args) =>
+                {
+                    args.Cancel = true;
+                    WikiFailure("This link requires another application. Use web links to continue browsing here.");
                 };
                 wikiInitialized = true;
             }
@@ -109,14 +121,14 @@ public sealed partial class TourismWindow
 
     private void WikiNavigationStarting(WebView2 sender, CoreWebView2NavigationStartingEventArgs args)
     {
-        if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri) || !IsWikiUri(uri))
+        if (!Uri.TryCreate(args.Uri, UriKind.Absolute, out var uri) || !IsWebUri(uri))
         {
             args.Cancel = true;
-            WikiFailure("This link is outside Wikipedia. Continue reading with the links inside this article.");
+            WikiFailure("This link cannot be displayed in the app’s web browser.");
             return;
         }
         wikiRequestedUri = uri;
-        WikiSource.Text = "Source: Wikipedia · " + uri.AbsoluteUri;
+        WikiSource.Text = uri.AbsoluteUri;
         WikiError.IsOpen = false;
         WikiLoading.Visibility = Visibility.Visible;
     }
@@ -126,22 +138,26 @@ public sealed partial class TourismWindow
         WikiLoading.Visibility = Visibility.Collapsed;
         WikiBack.IsEnabled = sender.CanGoBack;
         if (!args.IsSuccess && args.WebErrorStatus != CoreWebView2WebErrorStatus.OperationCanceled)
-            WikiFailure("Wikipedia could not be loaded. Check your internet connection and retry, or browse the offline destination notes above.");
+            WikiFailure("This page could not be loaded. Check your internet connection and retry, or close the browser to return to the app.");
     }
 
     private void WikiFailure(string message)
     {
+        WikiError.Severity = InfoBarSeverity.Warning;
         WikiLoading.Visibility = Visibility.Collapsed;
         WikiError.Message = message;
         WikiError.IsOpen = true;
     }
 
     private void WikiGoBack(object sender, RoutedEventArgs e) { if (WikiBrowser.CanGoBack) WikiBrowser.GoBack(); }
+    private void BrowserGoForward(object sender, RoutedEventArgs e) { if (WikiBrowser.CanGoForward) WikiBrowser.GoForward(); }
     private async void WikiRetry(object sender, RoutedEventArgs e) { if (wikiRequestedUri is not null) await OpenWikiUri(wikiRequestedUri); }
     private void CloseWikiReader(object sender, RoutedEventArgs e)
     {
         WikiBrowser.CoreWebView2?.Stop();
         WikiReaderPanel.Visibility = Visibility.Collapsed;
+        Nav.IsEnabled = true;
+        Nav.Focus(FocusState.Programmatic);
         WikiLoading.Visibility = Visibility.Collapsed;
     }
 }

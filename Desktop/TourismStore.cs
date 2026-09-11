@@ -9,6 +9,10 @@ namespace digital_heritage_preservation_app;
 public sealed record Destination(string Id, string Name, string Region, string Category, string Description, string Highlight, string Image)
 {
     public string Country { get; init; } = "Sri Lanka";
+    public string History { get; init; } = "";
+    public string Accessibility { get; init; } = "";
+    public string SourceUrl { get; init; } = "";
+    public DateTimeOffset? CheckedAt { get; init; }
     public string Subtitle => $"{Region} · {Country} · {Category}";
     public override string ToString() => $"{Name} · {Country}";
 }
@@ -35,14 +39,14 @@ public static class Destinations
     };
     public static readonly string[] Countries = { "Sri Lanka", "Japan", "South Korea", "Russia" };
     public static readonly string[] Categories = { "Heritage", "Nature", "Coast", "Culture" };
-    public static Destination[] Catalog(TravelData data) => All.Where(d => !data.CustomDestinations.Any(c => c.Id == d.Id)).Concat(data.CustomDestinations).ToArray();
+    public static Destination[] Catalog(TravelData data) => All.Where(d => !data.CustomDestinations.Any(c => c.Id == d.Id)).Select(PlaceGuides.Enrich).Concat(data.CustomDestinations).ToArray();
     public static Destination[] Filter(TravelData data, string location, string query, string category, bool savedOnly)
     {
         var country = location == "Local" ? data.HomeCountry : location;
         return Catalog(data).Where(d => country == "All" || d.Country.Equals(country, StringComparison.OrdinalIgnoreCase))
             .Where(d => !savedOnly || data.Saved.Contains(d.Id))
             .Where(d => category == "All experiences" || d.Category == category)
-            .Where(d => $"{d.Name} {d.Region} {d.Country} {d.Category} {d.Description}".Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
+            .Where(d => $"{d.Name} {d.Region} {d.Country} {d.Category} {d.Description} {d.History} {d.Highlight}".Contains(query.Trim(), StringComparison.OrdinalIgnoreCase)).ToArray();
     }
 }
 
@@ -52,6 +56,7 @@ public sealed class TripStop
     public string DestinationId { get; set; } = "";
     public int Day { get; set; } = 1;
     public string Notes { get; set; } = "";
+    public decimal EstimatedCost { get; set; }
 }
 
 public sealed class TravelTrip
@@ -60,6 +65,9 @@ public sealed class TravelTrip
     public string Name { get; set; } = "";
     public DateTime Start { get; set; } = DateTime.Today;
     public int Days { get; set; } = 3;
+    public string Currency { get; set; } = "USD";
+    public decimal Budget { get; set; }
+    public decimal EstimatedTotal => Stops.Sum(s => s.EstimatedCost);
     public List<TripStop> Stops { get; set; } = new();
     public string Summary => $"{Start:dd MMM yyyy} · {Days} days · {Stops.Count} stops";
 }
@@ -72,6 +80,7 @@ public sealed class TravelData
     public string Language { get; set; } = "en";
     public string HomeCountry { get; set; } = "Sri Lanka";
     public string Location { get; set; } = "Local";
+    public bool HasSeenUserGuide { get; set; }
     public List<Destination> CustomDestinations { get; set; } = new();
 }
 
@@ -89,18 +98,20 @@ public sealed class TourismStore
         if (!new[] { "en", "ja", "ko", "ru" }.Contains(data.Language) || string.IsNullOrWhiteSpace(data.HomeCountry) || data.HomeCountry.Length > 80 || string.IsNullOrWhiteSpace(data.Location) || data.Location.Length > 80)
             throw new InvalidDataException("Invalid language or location.");
         var ids = Destinations.Catalog(data).Select(d => d.Id).ToHashSet();
+        if (data.CustomDestinations.Any(d => d.History is null || d.History.Length > 12000 || d.Accessibility is null || d.Accessibility.Length > 4000 || d.SourceUrl is null || d.SourceUrl.Length > 2000 || d.SourceUrl.Length > 0 && (!Uri.TryCreate(d.SourceUrl, UriKind.Absolute, out var source) || source.Scheme != "https")))
+            throw new InvalidDataException("Invalid place guide details.");
         if (data.Saved is null || data.Trips is null || data.Saved.Any(id => !ids.Contains(id)) || data.Saved.Distinct().Count() != data.Saved.Count || !new[] { "Default", "Light", "Dark" }.Contains(data.Theme))
             throw new InvalidDataException("Invalid travel preferences.");
         if (data.Trips.Any(t => t is null || t.Id == Guid.Empty || string.IsNullOrWhiteSpace(t.Name) || t.Name.Length > 120 || t.Days < 1 || t.Days > 60 || t.Start > DateTime.MaxValue.AddDays(-t.Days) || t.Stops is null || t.Stops.Any(s => s is null || s.Id == Guid.Empty || !ids.Contains(s.DestinationId) || s.Day < 1 || s.Day > t.Days || s.Notes is null || s.Notes.Length > 2000) || t.Stops.Select(s => s.Id).Distinct().Count() != t.Stops.Count) || data.Trips.Select(t => t.Id).Distinct().Count() != data.Trips.Count)
             throw new InvalidDataException("Invalid trip or itinerary.");
+        if (data.Trips.Any(t => t.Budget < 0 || t.Budget > 1000000000 || t.Currency is null || t.Currency.Length != 3 || t.Currency.Any(c => c < 'A' || c > 'Z') || t.Stops.Any(s => s.EstimatedCost < 0 || s.EstimatedCost > 1000000000)))
+            throw new InvalidDataException("Invalid budget or currency. Use a three-letter currency code and nonnegative amounts.");
         return data;
     }
     public void Save(TravelData data)
     {
         var json = Serialize(data);
         Parse(json);
-        Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(FilePath))!);
-        File.WriteAllText(FilePath + ".tmp", json);
-        File.Move(FilePath + ".tmp", FilePath, true);
+        RecoveryFiles.Write(FilePath, json);
     }
 }

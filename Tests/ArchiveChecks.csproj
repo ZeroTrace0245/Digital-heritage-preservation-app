@@ -1,4 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
  <ItemGroup><Compile Include="../Desktop/ArchiveStore.cs" Link="ArchiveStore.cs" /><Compile Include="../Desktop/TourismStore.cs" Link="TourismStore.cs" /><Compile Include="../Desktop/TravelText.cs" Link="TravelText.cs" /></ItemGroup>
+ <ItemGroup><Compile Include="../Desktop/RecoveryFiles.cs" Link="RecoveryFiles.cs" /><Compile Include="../Desktop/TravelExchange.cs" Link="TravelExchange.cs" /><Compile Include="../Desktop/OfflineLibrary.cs" Link="OfflineLibrary.cs" /><Compile Include="../Desktop/PlaceGuides.cs" Link="PlaceGuides.cs" /></ItemGroup>
+ <ItemGroup><Compile Include="../Desktop/ReleaseText.cs" Link="ReleaseText.cs" /></ItemGroup>
 </Project>

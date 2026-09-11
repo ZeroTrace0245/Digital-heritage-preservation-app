@@ -9,6 +9,7 @@ public static class TravelText
     private static readonly Dictionary<string, string[]> Text = new()
     {
         ["Discover"] = new[] { "見つける", "둘러보기", "Открыть мир" },
+        ["User guide"] = new[] { "ユーザーガイド", "사용자 가이드", "Руководство пользователя" },
         ["Places wiki"] = new[] { "旅先ウィキ", "장소 위키", "Вики о местах" },
         ["Saved places"] = new[] { "保存した場所", "저장한 장소", "Сохранённые места" },
         ["My trips"] = new[] { "旅のプラン", "내 여행", "Мои поездки" },
@@ -108,11 +109,11 @@ public static class TravelText
     public static string Get(string key, string language)
     {
         var index = language switch { "ja" => 0, "ko" => 1, "ru" => 2, _ => -1 };
-        return index >= 0 && Text.TryGetValue(key, out var translations) ? translations[index] : key;
+        return index < 0 ? key : Text.TryGetValue(key, out var translations) ? translations[index] : ReleaseText.Get(key, index);
     }
     public static string TranslateDisplayed(string value, string language)
     {
-        var key = Text.ContainsKey(value) ? value : Text.FirstOrDefault(p => p.Value.Contains(value)).Key;
+        var key = Text.ContainsKey(value) ? value : Text.FirstOrDefault(p => p.Value.Contains(value)).Key ?? ReleaseText.Key(value);
         return key is null ? value : Get(key, language);
     }
 }

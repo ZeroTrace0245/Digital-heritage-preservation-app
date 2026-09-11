@@ -2,6 +2,6 @@
   <PropertyGroup>
     <BaseIntermediateOutputPath>obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
     <MSBuildProjectExtensionsPath>$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
-    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**;Tests\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj\**;bin\**;Tests\**;artifacts\**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>

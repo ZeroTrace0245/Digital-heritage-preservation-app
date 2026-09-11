@@ -3,6 +3,7 @@ using digital_heritage_preservation_app;
 var directory = Path.Combine(Path.GetTempPath(), "HeritageChecks-" + Guid.NewGuid());
 try
 {
+    ReleaseChecks.Run(directory);
     var store = new ArchiveStore(Path.Combine(directory, "archive.json"));
     if (store.Load().Count != 0) throw new Exception("Fresh archive is not empty.");
     var record = new HeritageRecord { Title = "ආයුබෝවන්", Kind = "Language", Description = "A greeting", Culture = "Sinhala", IsFavorite = true };

@@ -13,6 +13,7 @@ namespace digital_heritage_preservation_app;
 public sealed partial class TourismWindow
 {
     private bool settingPreferences;
+    private readonly System.Threading.SemaphoreSlim dialogGate = new(1, 1);
     private Destination[] Catalog => Destinations.Catalog(data);
     private string T(string key) => TravelText.Get(key, data.Language);
     private sealed record DestinationCard(Destination Destination, string Language)
@@ -61,6 +62,7 @@ public sealed partial class TourismWindow
             "Saved" => T("Keep a little inspiration for later."),
             "Trips" => T("Less organizing. More exploring."),
             "Wiki" => T("Explore places, history and culture without leaving the app."),
+            "Offline" => T("Your downloaded reading, available without internet."),
             _ => T("A travel companion that feels like yours.")
         };
     }
@@ -84,10 +86,15 @@ public sealed partial class TourismWindow
     // Translate UI labels only; never modify destination content or user-entered text.
     private void Localize(DependencyObject node)
     {
+        if (node == OfflineArticles || node == OfflineBody || node == OfflineTitle || node == OfflineSource || node == PrintBrowser) return;
         if (node == WikiPlaces || node == WikiNotes || node == WikiBrowser || node == Places || node == TripsList || node == Stops || node == HomeChoice || node == LanguageChoice || node == HeroTitle || node == HeroDescription) return;
         string Translate(string value) => TravelText.TranslateDisplayed(value, data.Language);
+        var automationName = Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(node);
+        if (!string.IsNullOrEmpty(automationName)) Microsoft.UI.Xaml.Automation.AutomationProperties.SetName(node, Translate(automationName));
+        if (node is AutoSuggestBox suggest) { suggest.PlaceholderText = Translate(suggest.PlaceholderText); return; }
         if (node is TextBlock text && text.GetBindingExpression(TextBlock.TextProperty) is null) text.Text = Translate(text.Text);
-        if (node is ContentControl control && control.Content is string content) control.Content = Translate(content);
+        if (node is ContentControl control && control.Content is string content) { control.Content = Translate(content); return; }
+        if (node is InfoBar info) { info.Title = Translate(info.Title); info.Message = Translate(info.Message); return; }
         if (node is TextBox input)
         {
             if (input.Header is string header) input.Header = Translate(header);
@@ -118,6 +125,7 @@ public sealed partial class TourismWindow
         if (node is NavigationView navigation)
         {
             foreach (var item in navigation.MenuItems.OfType<DependencyObject>()) Localize(item);
+            foreach (var item in navigation.FooterMenuItems.OfType<DependencyObject>()) Localize(item);
             if (navigation.PaneHeader is DependencyObject paneHeader) Localize(paneHeader);
             if (navigation.PaneFooter is DependencyObject paneFooter) Localize(paneFooter);
             if (navigation.SettingsItem is NavigationViewItem settings)
@@ -127,17 +135,24 @@ public sealed partial class TourismWindow
             }
         }
         if (node is ContentControl container && container.Content is DependencyObject childContent) { Localize(childContent); return; }
+        // Do not overwrite template bindings inside controls (for example InfoBar.Message).
+        if (node is Control) return;
         for (var i = 0; i < VisualTreeHelper.GetChildrenCount(node); i++) Localize(VisualTreeHelper.GetChild(node, i));
     }
 
     private async Task<ContentDialogResult> ShowDialog(ContentDialog dialog)
     {
+        await dialogGate.WaitAsync();
+        try
+        {
         if (dialog.Title is string title) dialog.Title = TravelText.TranslateDisplayed(title, data.Language);
         dialog.PrimaryButtonText = TravelText.TranslateDisplayed(dialog.PrimaryButtonText, data.Language);
         dialog.SecondaryButtonText = TravelText.TranslateDisplayed(dialog.SecondaryButtonText, data.Language);
         dialog.CloseButtonText = TravelText.TranslateDisplayed(dialog.CloseButtonText, data.Language);
         if (dialog.Content is DependencyObject content) Localize(content);
-        return await dialog.ShowAsync();
+            return await dialog.ShowAsync();
+        }
+        finally { dialogGate.Release(); }
     }
 
     private async void AddPlace(object sender, RoutedEventArgs e) => await PlaceEditor(null);
@@ -154,13 +169,19 @@ public sealed partial class TourismWindow
         var error = new TextBlock { TextWrapping = TextWrapping.Wrap };
         var panel = new StackPanel { Width = 420, Spacing = 12 };
         foreach (var item in new FrameworkElement[] { name, country, region, category, description, highlight, error }) panel.Children.Add(item);
+        var history = new TextBox { Header = T("History and context"), Text = existing?.History ?? "", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MaxLength = 12000, Height = 120 };
+        var access = new TextBox { Header = T("Accessibility notes"), Text = existing?.Accessibility ?? "", AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MaxLength = 4000, Height = 90 };
+        var source = new TextBox { Header = T("Source URL (HTTPS)"), Text = existing?.SourceUrl ?? "", MaxLength = 2000 };
+        var checkedAt = new CalendarDatePicker { Header = T("Source checked on"), Date = existing?.CheckedAt };
+        foreach (var field in new FrameworkElement[] { history, access, source, checkedAt }) panel.Children.Insert(panel.Children.Count - 1, field);
         var dialog = Dialog(existing is null ? "Add your own place" : "Customize place", panel, "Save place");
         dialog.PrimaryButtonClick += (_, args) =>
         {
             var countryName = country.Text.Trim();
             if (string.IsNullOrWhiteSpace(name.Text) || countryName.Length is 0 or > 80 || string.IsNullOrWhiteSpace(description.Text)) { error.Text = T("Enter a place name, country and description."); args.Cancel = true; return; }
             countryName = Destinations.Countries.Concat(Catalog.Select(d => d.Country)).FirstOrDefault(c => c.Equals(countryName, StringComparison.OrdinalIgnoreCase)) ?? countryName;
-            var destination = new Destination(existing?.Id ?? "custom-" + Guid.NewGuid(), name.Text.Trim(), region.Text.Trim(), (category.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Culture", description.Text.Trim(), highlight.Text.Trim(), existing?.Image ?? "") { Country = countryName };
+            if (source.Text.Trim().Length > 0 && (!Uri.TryCreate(source.Text.Trim(), UriKind.Absolute, out var sourceUri) || sourceUri.Scheme != "https")) { error.Text = T("Enter a valid HTTPS source URL."); args.Cancel = true; return; }
+            var destination = new Destination(existing?.Id ?? "custom-" + Guid.NewGuid(), name.Text.Trim(), region.Text.Trim(), (category.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "Culture", description.Text.Trim(), highlight.Text.Trim(), existing?.Image ?? "") { Country = countryName, History = history.Text.Trim(), Accessibility = access.Text.Trim(), SourceUrl = source.Text.Trim(), CheckedAt = checkedAt.Date };
             if (!Change(next => { next.CustomDestinations.RemoveAll(d => d.Id == destination.Id); next.CustomDestinations.Add(destination); next.Location = countryName; })) args.Cancel = true;
             else InitializePreferences();
         };

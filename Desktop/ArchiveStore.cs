@@ -39,9 +39,6 @@ public sealed class ArchiveStore
     public void Save(List<HeritageRecord> records)
     {
         Parse(Serialize(records));
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-        var temporary = FilePath + ".tmp";
-        File.WriteAllText(temporary, Serialize(records));
-        File.Move(temporary, FilePath, true);
+        RecoveryFiles.Write(FilePath, Serialize(records));
     }
 }
