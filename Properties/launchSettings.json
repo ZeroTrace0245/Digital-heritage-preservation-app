@@ -1,8 +1,5 @@
 {
   "profiles": {
-    "digital heritage preservation app (Package)": {
-      "commandName": "MsixPackage"
-    },
     "digital heritage preservation app (Unpackaged)": {
       "commandName": "Project"
     }

@@ -11,6 +11,7 @@
   <ItemGroup>
 	<Compile Remove="App.xaml.cs" />
 	<Compile Remove="MainWindow.xaml.cs" />
+	<Compile Remove="Desktop\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,5 +1,19 @@
 # 🌍 Digital Heritage Preservation App - MVP Prototype
 
+## Serendib tourism desktop app
+
+The desktop app opens a multi-country travel planner with Windows 11 Mica, a top location bar,
+Sri Lanka/Japan/South Korea/Russia destinations, customizable places, saved favorites and trip itineraries.
+Settings include English, Japanese, Korean and Russian interface options, home country and appearance.
+The Places wiki section offers searchable offline destination notes and Wikipedia search and reading inside the app.
+See [Tourism setup and features](TOURISM-QUICKSTART.md). The original heritage archive is still accessible.
+
+## Native Windows desktop app
+
+A WinUI 3 desktop archive is now included with record editing, search, favorites, event dates,
+offline persistence, and JSON backup import/export. See [WinUI setup and features](WINUI-QUICKSTART.md)
+for build commands and storage details. The desktop archive is separate from the web API described below.
+
 A full-stack ASP.NET Core application for preserving cultural heritage through community storytelling, artifact archiving, language preservation, and cultural event mapping.
 
 ## 📋 Features Implemented

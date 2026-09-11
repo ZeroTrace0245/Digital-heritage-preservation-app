@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -34,7 +33,19 @@ namespace digital_heritage_preservation_app
         /// </summary>
         public App()
         {
+            UnhandledException += (_, e) => LogStartupError(e.Exception);
             InitializeComponent();
+        }
+
+        private static void LogStartupError(Exception exception)
+        {
+            try
+            {
+                var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DigitalHeritage");
+                Directory.CreateDirectory(folder);
+                File.AppendAllText(Path.Combine(folder, "startup-errors.log"), $"{DateTimeOffset.Now:u} {exception}\n");
+            }
+            catch { /* Preserve the original exception if diagnostics cannot be written. */ }
         }
 
         /// <summary>
@@ -43,8 +54,12 @@ namespace digital_heritage_preservation_app
         /// <param name="args">Details about the launch request and process.</param>
         protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
         {
-            _window = new MainWindow();
-            _window.Activate();
+            try
+            {
+                _window = new TourismWindow();
+                _window.Activate();
+            }
+            catch (Exception ex) { LogStartupError(ex); throw; }
         }
     }
 }
