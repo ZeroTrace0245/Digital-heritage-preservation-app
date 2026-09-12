@@ -9,6 +9,7 @@
    <NavigationViewItem Content="Artifacts" Tag="Artifact" Icon="Pictures" />
    <NavigationViewItem Content="Languages" Tag="Language" Icon="World" />
    <NavigationViewItem Content="Events" Tag="Event" Icon="Calendar" />
+   <NavigationViewItem Content="Community" Tag="Community" Icon="Contact" />
    <NavigationViewItem Content="Favorites" Tag="Favorites" Icon="Favorite" />
   </NavigationView.MenuItems>
   <Grid Padding="28" RowSpacing="16" Loaded="OnLoaded">

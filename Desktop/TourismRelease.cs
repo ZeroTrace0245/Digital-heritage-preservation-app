@@ -150,7 +150,7 @@ public sealed partial class TourismWindow
         confirm.Children.Add(new TextBlock { Text = T("Restore this snapshot? The current file will be kept as another recovery copy."), TextWrapping = TextWrapping.Wrap });
         if (await ShowDialog(Dialog("Restore", confirm, "Restore")) != ContentDialogResult.Primary) return;
         if (type.SelectedIndex == 0) ApplyIncoming(TourismStore.Parse(json));
-        else { archive?.Close(); archive = null; new ArchiveStore().Save(ArchiveStore.Parse(json)); Message(T("Archive restored.")); }
+        else { new ArchiveStore().Save(ArchiveStore.Parse(json)); Message(T("Archive restored.")); }
     }
     private async Task ImportSharedTrip()
     {

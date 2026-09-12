@@ -63,6 +63,7 @@ public sealed partial class TourismWindow
             "Trips" => T("Less organizing. More exploring."),
             "Wiki" => T("Explore places, history and culture without leaving the app."),
             "Offline" => T("Your downloaded reading, available without internet."),
+            "Community" => T("Travel with more curiosity, care and local connection."),
             _ => T("A travel companion that feels like yours.")
         };
     }

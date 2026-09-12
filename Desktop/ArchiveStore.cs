@@ -23,7 +23,7 @@ public sealed class HeritageRecord
 
 public sealed class ArchiveStore
 {
-    public static readonly string[] Kinds = { "Story", "Artifact", "Language", "Event" };
+    public static readonly string[] Kinds = { "Story", "Artifact", "Language", "Event", "Community" };
     public string FilePath { get; }
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
     public ArchiveStore(string? path = null) => FilePath = path ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DigitalHeritage", "archive.json");

@@ -16,6 +16,7 @@
                 <li><a href="#" onclick="loadSection('artifacts')">Artifacts</a></li>
                 <li><a href="#" onclick="loadSection('languages')">Languages</a></li>
                 <li><a href="#" onclick="loadSection('events')">Events</a></li>
+                <li><a href="#" onclick="loadSection('community')">Community Hub</a></li>
             </ul>
         </div>
     </nav>
@@ -123,6 +124,54 @@
                 <button type="button" class="btn btn-primary" onclick="addEvent()">📅 Save Event</button>
             </form>
             <div id="eventsList" class="list"></div>
+        </section>
+
+        <!-- Community Hub -->
+        <section id="community" class="section">
+            <h2>🤝 Community Hub</h2>
+            <p class="section-intro">Share knowledge with care. Every contribution has visibility, consent, and cultural-sensitivity controls.</p>
+            <div class="community-grid">
+                <form id="profileForm" class="form compact-form">
+                    <h3>👤 My contributor profile</h3>
+                    <input id="profileName" placeholder="Name" required>
+                    <input id="profileEmail" type="email" placeholder="Email" required>
+                    <input id="profileCommunity" placeholder="Community, skills, or languages">
+                    <textarea id="profileBio" placeholder="Short bio and how you can help"></textarea>
+                    <button type="button" class="btn btn-primary" onclick="saveProfile()">Save profile</button>
+                </form>
+                <form id="groupForm" class="form compact-form">
+                    <h3>🏘️ Start a heritage group</h3>
+                    <input id="groupName" placeholder="Group name" required>
+                    <input id="groupRegion" placeholder="Village, region, school, or diaspora">
+                    <textarea id="groupDescription" placeholder="What is this group preserving?"></textarea>
+                    <select id="groupVisibility"><option>Community</option><option>Private</option><option>Public</option></select>
+                    <button type="button" class="btn btn-primary" onclick="addGroup()">Create group</button>
+                </form>
+            </div>
+            <form id="communityForm" class="form">
+                <h3>Make a community contribution</h3>
+                <select id="communityType">
+                    <option value="Memory">💬 Add a memory or context</option>
+                    <option value="Identification">🔎 Help identify this</option>
+                    <option value="Challenge">🏆 Heritage challenge</option>
+                    <option value="HelpRequest">🧩 Request a volunteer or translation</option>
+                    <option value="Timeline">🗺️ Add to a shared timeline or map</option>
+                </select>
+                <input id="communityTitle" placeholder="Title" required>
+                <textarea id="communityDescription" placeholder="Describe the memory, item, request, or activity" required></textarea>
+                <input id="communityTags" placeholder="Tags: weaving, Sinhala, Galle …">
+                <select id="communityVisibility"><option>Public</option><option>Community</option><option>Private</option></select>
+                <label><input type="checkbox" id="communityConsent"> I have consent to share this knowledge or material.</label>
+                <label><input type="checkbox" id="communitySensitive"> This may be culturally sensitive; please handle with care.</label>
+                <button type="button" class="btn btn-primary" onclick="addCommunityItem()">Share with the community</button>
+            </form>
+            <div class="community-toolbar">
+                <h3>Community activity</h3>
+                <select id="communityFilter" onchange="loadCommunity()"><option value="">All activity</option><option>Memory</option><option>Identification</option><option>Challenge</option><option>HelpRequest</option><option>Timeline</option></select>
+            </div>
+            <div id="communityList" class="list"></div>
+            <h3 class="subheading">Heritage groups</h3>
+            <div id="groupsList" class="list"></div>
         </section>
     </div>
 

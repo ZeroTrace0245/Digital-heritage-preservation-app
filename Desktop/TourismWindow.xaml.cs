@@ -17,7 +17,6 @@ public sealed partial class TourismWindow : Window
     private bool ready;
     private bool writable = true;
     private string page = "Discover";
-    private MainWindow? archive;
     public TourismWindow()
     {
         InitializeComponent();
@@ -71,12 +70,6 @@ public sealed partial class TourismWindow : Window
         if (args.IsSettingsSelected) page = "Settings";
         else if (args.SelectedItem is NavigationViewItem item)
         {
-            if (item.Tag?.ToString() == "Archive")
-            {
-                if (archive is null) { archive = new MainWindow(); archive.Closed += (_, _) => archive = null; }
-                archive.Activate();
-                return;
-            }
             page = item.Tag?.ToString() ?? "Discover";
         }
         Refresh();
@@ -89,11 +82,13 @@ public sealed partial class TourismWindow : Window
         SettingsPanel.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         WikiPanel.Visibility = page == "Wiki" ? Visibility.Visible : Visibility.Collapsed;
         OfflinePanel.Visibility = page == "Offline" ? Visibility.Visible : Visibility.Collapsed;
+        CommunityPanel.Visibility = page == "Community" ? Visibility.Visible : Visibility.Collapsed;
+        if (page == "Community") RefreshCommunity();
         RefreshWiki();
         if (page == "Offline") RefreshOffline();
         Hero.Visibility = page == "Discover" ? Visibility.Visible : Visibility.Collapsed;
-        PageTitle.Text = page == "Offline" ? "Offline library" : page == "Wiki" ? "Places wiki" : page == "Saved" ? "Saved places" : page == "Trips" ? "My trips" : page;
-        PageSubtitle.Text = page switch { "Saved" => "Keep a little inspiration for later.", "Trips" => "Less organizing. More exploring.", "Settings" => "A travel companion that feels like yours.", _ => "Small island. Endless possibilities." };
+        PageTitle.Text = page == "Offline" ? "Offline library" : page == "Wiki" ? "Places wiki" : page == "Saved" ? "Saved places" : page == "Trips" ? "My trips" : page == "Community" ? "Community" : page;
+        PageSubtitle.Text = page switch { "Saved" => "Keep a little inspiration for later.", "Trips" => "Less organizing. More exploring.", "Community" => "Travel with more curiosity, care and local connection.", "Settings" => "A travel companion that feels like yours.", _ => "Small island. Endless possibilities." };
         SectionTitle.Text = page == "Saved" ? "Your personal shortlist" : "Find your kind of escape";
         var query = Search.Text.Trim();
         var category = (Category.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "All experiences";

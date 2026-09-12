@@ -20,6 +20,7 @@ function loadSection(sectionId) {
         else if (sectionId === 'artifacts') loadArtifacts();
         else if (sectionId === 'languages') loadLanguages();
         else if (sectionId === 'events') loadEvents();
+        else if (sectionId === 'community') { loadCommunity(); loadGroups(); loadProfile(); }
     }
 }
 
@@ -28,6 +29,75 @@ function scrollToForm(formId) {
         const form = document.getElementById(formId);
         if (form) form.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+}
+
+// Community hub — the demo uses contributor 1 until authentication is added.
+async function loadProfile() {
+    try {
+        const user = await fetch(`${API_BASE}/users/1`).then(r => r.json());
+        ['Name', 'Email', 'Community', 'Bio'].forEach(field => {
+            document.getElementById(`profile${field}`).value = user[field.charAt(0).toLowerCase() + field.slice(1)] || '';
+        });
+    } catch (error) { console.error('Error loading profile:', error); }
+}
+
+async function saveProfile() {
+    const payload = {
+        id: 1, name: profileName.value.trim(), email: profileEmail.value.trim(),
+        community: profileCommunity.value.trim(), bio: profileBio.value.trim()
+    };
+    if (!payload.name || !payload.email) return alert('Name and email are required.');
+    const response = await fetch(`${API_BASE}/users/1`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    if (response.ok) alert('Your contributor profile was saved.'); else alert('Could not save your profile.');
+}
+
+async function addGroup() {
+    const payload = { name: groupName.value.trim(), region: groupRegion.value.trim(), description: groupDescription.value.trim(), visibility: groupVisibility.value, createdById: 1 };
+    if (!payload.name) return alert('Give the group a name.');
+    const response = await fetch(`${API_BASE}/community/groups`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    if (response.ok) { groupForm.reset(); await loadGroups(); } else alert('Could not create the group.');
+}
+
+async function loadGroups() {
+    try {
+        const groups = await fetch(`${API_BASE}/community/groups`).then(r => r.json());
+        groupsList.innerHTML = groups.length ? groups.map(group => `<div class="card"><h3>🏘️ ${escapeHtml(group.name)}</h3><span class="badge">${escapeHtml(group.visibility)}</span>${group.region ? `<p><strong>Area:</strong> ${escapeHtml(group.region)}</p>` : ''}<p>${escapeHtml(group.description || 'A heritage community space.')}</p></div>`).join('') : '<div class="empty-state"><p>No groups yet. Start the first one.</p></div>';
+    } catch (error) { console.error('Error loading groups:', error); }
+}
+
+async function addCommunityItem() {
+    const payload = {
+        type: communityType.value, title: communityTitle.value.trim(), description: communityDescription.value.trim(), tags: communityTags.value.trim(),
+        visibility: communityVisibility.value, consentConfirmed: communityConsent.checked, isSensitive: communitySensitive.checked, contributorId: 1
+    };
+    if (!payload.title || !payload.description) return alert('Add a title and description.');
+    if (!payload.consentConfirmed) return alert('Please confirm you have consent before sharing.');
+    const response = await fetch(`${API_BASE}/community/items`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    if (response.ok) { communityForm.reset(); await loadCommunity(); } else alert('Could not share this contribution.');
+}
+
+async function loadCommunity() {
+    try {
+        const type = document.getElementById('communityFilter').value;
+        const items = await fetch(`${API_BASE}/community/items${type ? `?type=${encodeURIComponent(type)}` : ''}`).then(r => r.json());
+        communityList.innerHTML = items.length ? items.map(item => {
+            const verified = item.verifiedAt ? '<span class="badge verified">✓ Community verified</span>' : '';
+            const sensitive = item.isSensitive ? '<span class="badge sensitive">⚠ Sensitive knowledge</span>' : '';
+            const action = item.type === 'Identification' && !item.verifiedAt ? `<button class="btn btn-secondary btn-small" onclick="verifyCommunityItem(${item.id})">Mark verified</button>` : '';
+            const close = ['Challenge', 'HelpRequest'].includes(item.type) && item.status !== 'Completed' ? `<button class="btn btn-secondary btn-small" onclick="closeCommunityItem(${item.id})">Mark complete</button>` : '';
+            return `<div class="card"><span class="badge">${escapeHtml(item.type)}</span>${verified}${sensitive}<h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.description)}</p>${item.tags ? `<p><strong>Tags:</strong> ${escapeHtml(item.tags)}</p>` : ''}<div class="meta"><p>${escapeHtml(item.visibility)} · ${escapeHtml(item.status)} · ${new Date(item.createdAt).toLocaleDateString()}</p></div><div class="actions">${action}${close}</div></div>`;
+        }).join('') : '<div class="empty-state"><p>No community activity yet. Share a memory, question, or challenge.</p></div>';
+    } catch (error) { console.error('Error loading community:', error); }
+}
+
+async function verifyCommunityItem(id) {
+    const response = await fetch(`${API_BASE}/community/items/${id}/verify`, { method: 'POST' });
+    if (response.ok) await loadCommunity();
+}
+
+async function closeCommunityItem(id) {
+    const response = await fetch(`${API_BASE}/community/items/${id}/close`, { method: 'POST' });
+    if (response.ok) await loadCommunity();
 }
 
 // Dashboard Stats

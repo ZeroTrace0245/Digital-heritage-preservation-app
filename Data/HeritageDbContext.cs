@@ -12,6 +12,8 @@ public class HeritageDbContext : DbContext
     public DbSet<Artifact> Artifacts { get; set; } = null!;
     public DbSet<LanguageEntry> LanguageEntries { get; set; } = null!;
     public DbSet<CulturalEvent> CulturalEvents { get; set; } = null!;
+    public DbSet<CommunityGroup> CommunityGroups { get; set; } = null!;
+    public DbSet<CommunityItem> CommunityItems { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

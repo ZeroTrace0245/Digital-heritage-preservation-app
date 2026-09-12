@@ -72,6 +72,20 @@ public sealed class TravelTrip
     public string Summary => $"{Start:dd MMM yyyy} · {Days} days · {Stops.Count} stops";
 }
 
+public sealed class CommunityPost
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string Country { get; set; } = "Sri Lanka";
+    public string Place { get; set; } = "";
+    public string Type { get; set; } = "Local tip";
+    public string Author { get; set; } = "";
+    public string Title { get; set; } = "";
+    public string Body { get; set; } = "";
+    public bool ConsentConfirmed { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public string Meta => $"{Type} · {Place} · shared by {Author} · {CreatedAt.LocalDateTime:dd MMM yyyy}";
+}
+
 public sealed class TravelData
 {
     public List<string> Saved { get; set; } = new();
@@ -82,6 +96,7 @@ public sealed class TravelData
     public string Location { get; set; } = "Local";
     public bool HasSeenUserGuide { get; set; }
     public List<Destination> CustomDestinations { get; set; } = new();
+    public List<CommunityPost> CommunityPosts { get; set; } = new();
 }
 
 public sealed class TourismStore
@@ -106,6 +121,8 @@ public sealed class TourismStore
             throw new InvalidDataException("Invalid trip or itinerary.");
         if (data.Trips.Any(t => t.Budget < 0 || t.Budget > 1000000000 || t.Currency is null || t.Currency.Length != 3 || t.Currency.Any(c => c < 'A' || c > 'Z') || t.Stops.Any(s => s.EstimatedCost < 0 || s.EstimatedCost > 1000000000)))
             throw new InvalidDataException("Invalid budget or currency. Use a three-letter currency code and nonnegative amounts.");
+        if (data.CommunityPosts is null || data.CommunityPosts.Any(p => p is null || p.Id == Guid.Empty || string.IsNullOrWhiteSpace(p.Country) || p.Country.Length > 80 || p.Place is null || p.Place.Length > 120 || !new[] { "Local tip", "Story", "Help request" }.Contains(p.Type) || string.IsNullOrWhiteSpace(p.Author) || p.Author.Length > 80 || string.IsNullOrWhiteSpace(p.Title) || p.Title.Length > 160 || string.IsNullOrWhiteSpace(p.Body) || p.Body.Length > 4000 || !p.ConsentConfirmed) || data.CommunityPosts.Select(p => p.Id).Distinct().Count() != data.CommunityPosts.Count)
+            throw new InvalidDataException("Invalid community post. All posts need author attribution and consent.");
         return data;
     }
     public void Save(TravelData data)

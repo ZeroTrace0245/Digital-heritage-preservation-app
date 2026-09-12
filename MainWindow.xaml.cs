@@ -16,9 +16,10 @@ public sealed partial class MainWindow : Window
     private string category = "All";
     private bool ready;
     private bool writable = true;
-    public MainWindow()
+    public MainWindow(string initialCategory = "All")
     {
         InitializeComponent();
+        category = ArchiveStore.Kinds.Contains(initialCategory) ? initialCategory : "All";
         AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
     }
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -27,6 +28,16 @@ public sealed partial class MainWindow : Window
         try { records = store.Load(); }
         catch (Exception ex) { writable = false; Message("Archive could not be loaded. Your file is preserved. Restore a valid backup to continue. " + ex.Message, true); }
         ready = true;
+        var item = Navigation.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(x => x.Tag?.ToString() == category);
+        if (item is not null) { Navigation.SelectedItem = item; Heading.Text = item.Content.ToString(); }
+        Refresh();
+    }
+    public void ShowCategory(string requestedCategory)
+    {
+        category = ArchiveStore.Kinds.Contains(requestedCategory) ? requestedCategory : "All";
+        if (!ready) return;
+        var item = Navigation.MenuItems.OfType<NavigationViewItem>().FirstOrDefault(x => x.Tag?.ToString() == category);
+        if (item is not null) { Navigation.SelectedItem = item; Heading.Text = item.Content.ToString(); }
         Refresh();
     }
     private void Message(string text, bool error = false) { Notice.Message = text; Notice.Severity = error ? InfoBarSeverity.Error : InfoBarSeverity.Success; Notice.IsOpen = true; }

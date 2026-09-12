@@ -228,6 +228,15 @@ body {
     margin-bottom: 2rem;
 }
 
+.section-intro { margin: -1rem 0 1.5rem; color: #59636d; }
+.community-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; }
+.compact-form { margin-bottom: 1.5rem; }
+.community-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 2rem 0 1rem; }
+.community-toolbar select { padding: .55rem; border: 1px solid var(--border); border-radius: 4px; }
+.subheading { margin: 2.5rem 0 1rem; color: var(--primary); }
+.verified { background: #e7f6eb !important; color: #28783a !important; }
+.sensitive { background: #fff4df !important; color: #8a5700 !important; }
+
 /* Lists */
 .list {
     display: grid;
@@ -317,6 +326,9 @@ footer {
     .quick-actions {
         grid-template-columns: 1fr;
     }
+
+    .community-grid { grid-template-columns: 1fr; }
+    .community-toolbar { align-items: flex-start; flex-direction: column; }
 }
 
 /* Loading and Empty States */
